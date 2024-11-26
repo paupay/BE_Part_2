@@ -1,0 +1,204 @@
+---
+title: "Covid Impact Data Analysis"
+format: html
+editor: visual
+---
+
+```{r}
+#| code-fold: true
+#| label: load-packages
+#| warning: false
+#| message: false
+
+
+library(tidyverse)
+library(ggthemes)
+library(RColorBrewer)
+library(plotly)
+library(pheatmap)
+library(corrplot)
+library(plotrix)
+library(tastypie)
+
+library(gplots)
+library(ggmosaic)
+library(treemapify)
+library(ggridges)
+library(ggalluvial)
+library(scatterPlotMatrix)
+
+library(readxl)
+library(writexl)
+
+library(kableExtra)
+library(multcomp)
+library(agricolae)
+library(factoextra)
+library(FactoMineR)
+
+```
+
+# Cargamos el conjunto de datos
+
+```{r}
+#| code-fold: true
+
+datos <-  read_csv("Users/paupay/Bioestadistica/Proyecto/covid_impact.csv")
+
+data_numeric <- datos
+
+
+datos$Increased_Work_Hours <- factor(datos$Increased_Work_Hours)
+datos$Work_From_Home <- factor(datos$Work_From_Home)
+datos$Productivity_Change <- factor(datos$Productivity_Change)
+datos$Stress_Level <- factor(datos$Stress_Level, levels=c("Low", "Medium", "High"))
+datos$Health_Issue <- factor(datos$Health_Issue)
+datos$Job_Security <- factor(datos$Job_Security)
+datos$Childcare_Responsibilities <- factor(datos$Childcare_Responsibilities)
+datos$Commuting_Changes <- factor(datos$Commuting_Changes)
+datos$Technology_Adaptation <- factor(datos$Technology_Adaptation)
+datos$Salary_Changes <- factor(datos$Salary_Changes)
+datos$Team_Collaboration_Challenges <- factor(datos$Team_Collaboration_Challenges)
+datos$Sector <- factor(datos$Sector)
+datos$Affected_by_Covid <- factor(datos$Affected_by_Covid)
+
+glimpse(datos)
+
+```
+
+# Resumen estadístico
+
+```{r}
+#| code-fold: true
+
+summary(datos)
+
+```
+
+# Distribución de variables cualitativas
+
+## Diagramas de barras
+
+```{r}
+#| code-fold: true
+
+
+var_cat <- dplyr::select(datos, where(is.factor)) |> names() 
+
+for (hvar in var_cat) {
+grafica <- ggplot(datos)+
+      geom_bar(aes(eval(as.name(hvar)), fill=Stress_Level), , position="fill", color='black')+ 
+        labs(x=hvar)+
+        scale_fill_brewer(palette="Set1")+
+        theme_bw()
+        print(grafica)
+        
+}
+
+
+
+```
+
+# Alluvialplot
+
+```{r}
+#| code-fold: true
+
+
+datos_alluvia <- datos  |>  dplyr::select(Stress_Level, Increased_Work_Hours, Work_From_Home, Productivity_Change, Health_Issue, Job_Security, Childcare_Responsibilities)  |> 
+  group_by(Stress_Level, Increased_Work_Hours, Work_From_Home, Productivity_Change, Health_Issue, Job_Security, Childcare_Responsibilities) |> 
+  summarize(frequency = n(), .groups = "drop")
+
+ggplot(datos_alluvia, aes(y = frequency, axis1=Stress_Level, axis2=Increased_Work_Hours, axis3=Work_From_Home, axis4=Productivity_Change, axis5=Health_Issue, axis6=Job_Security, axis7=Childcare_Responsibilities)) +
+  geom_alluvium(aes(fill = Stress_Level), width = 1/3, color = "black") +
+  geom_stratum(width = 1/3, fill = "black", color = "grey") +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), color = "white", size = 3) +
+  scale_x_discrete(limits = c("Stress", "Work Hours", "From Home", "Productivity", "Issue", "Security", "Childcare"), expand = c(.05, .05)) +
+  scale_fill_brewer(type = "qual", palette = "Dark2") + 
+  theme_minimal()
+
+```
+
+# Heatmap
+
+```{r}
+#| code-fold: true
+
+
+
+data_matrix <- data_numeric |> dplyr::select(Increased_Work_Hours, Work_From_Home, Productivity_Change, Health_Issue:Team_Collaboration_Challenges) |> as.matrix()
+dm_dim <- dim(data_matrix)
+rownames(data_matrix) <- paste("ID", 1:dm_dim[1], sep="_")
+
+
+row_annot <- dplyr::select(datos, Stress_Level, Sector) |> as.data.frame()
+rownames(row_annot) <- paste("ID", 1:dm_dim[1], sep="_")
+my_colour = list( 
+    Stress_Level = c( Low = "olivedrab", Medium = "goldenrod", High = "firebrick"),
+    Sector = c(Education = "#708FB3", Healthcare = "#4ABBBB", IT= "#158964",Retail= "#AAA111"))
+
+
+               
+
+mapa <- pheatmap(data_matrix, 
+         border_color = NA, 
+         scale = "none",
+         clustering_distance_rows = "binary", 
+         cutree_rows = 5,
+         treeheight_col=10,
+         clustering_distance_cols = "binary", 
+         clustering_method = "ward.D2", 
+         #color= hcl.colors(10, "Spectral"),
+         #breaks = c(-3, 0, 3, 6, 9, 12, 15),
+         drop_levels = TRUE,
+         show_colnames = T, 
+         show_rownames = F,
+         annotation_row = row_annot,
+         annotation_colors = my_colour)
+
+mapa
+
+#ggsave("heatmap_1.jpg", mapa, scale=1, dpi = 320)
+```
+
+# Heatmap 2
+
+```{r}
+#| code-fold: true
+
+
+
+data_matrix <- data_numeric |> dplyr::select(Increased_Work_Hours, Work_From_Home, Technology_Adaptation, Team_Collaboration_Challenges) |> as.matrix()
+dm_dim <- dim(data_matrix)
+rownames(data_matrix) <- paste("ID", 1:dm_dim[1], sep="_")
+
+
+row_annot <- dplyr::select(datos, Stress_Level, Sector) |> as.data.frame()
+rownames(row_annot) <- paste("ID", 1:dm_dim[1], sep="_")
+my_colour = list( 
+    Stress_Level = c( Low = "olivedrab", Medium = "goldenrod", High = "firebrick"),
+    Sector = c(Education = "#708FB3", Healthcare = "#4ABBBB", IT= "#158964",Retail= "#AAA111"))
+
+
+               
+
+mapa <- pheatmap(data_matrix, 
+         border_color = NA, 
+         scale = "none",
+         clustering_distance_rows = "binary", 
+         cutree_rows = 5,
+         treeheight_col=10,
+         clustering_distance_cols = "binary", 
+         clustering_method = "ward.D2", 
+         #color= hcl.colors(10, "Spectral"),
+         #breaks = c(-3, 0, 3, 6, 9, 12, 15),
+         drop_levels = TRUE,
+         show_colnames = T, 
+         show_rownames = F,
+         annotation_row = row_annot,
+         annotation_colors = my_colour)
+
+mapa
+
+#ggsave("heatmap_1.jpg", mapa, scale=1, dpi = 320)
+```
